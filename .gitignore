@@ -1,0 +1,50 @@
+# Laravel
+/vendor/
+.env
+.env.*
+!.env.example
+/storage/*.key
+/storage/*.lock
+/storage/*.log
+/public/storage
+Homestead.json
+Homestead.yaml
+/.phpunit.result.cache
+/.idea
+/.vscode
+*.sqlite
+*.sqlite-journal
+
+# Next.js (frontend)
+epmp-frontend/node_modules/
+epmp-frontend/.next/
+epmp-frontend/out/
+epmp-frontend/build/
+epmp-frontend/.vercel
+epmp-frontend/*.log
+
+# System
+.DS_Store
+Thumbs.db
+*.pem
+*.pid
+*.seed
+*.pid.lock
+
+# Composer
+composer.phar
+composer.lock
+
+# Logs
+*.log
+storage/logs/*
+!storage/logs/.gitkeep
+
+# Cache
+bootstrap/cache/*.php
+!bootstrap/cache/.gitkeep
+
+# Testing
+/coverage
+.phpunit.result.cache
+.phpunit.cache
