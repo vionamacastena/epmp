@@ -1,4 +1,3 @@
-
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -9,11 +8,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\TaskController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Controllers\Api\V1\CalendarController;
-use App\Http\Controllers\Api\V1\TimeTrackingController;
-use App\Http\Controllers\Api\V1\ReportsController;
-use App\Http\Controllers\Api\V1\FinanceController;
-use App\Http\Controllers\Api\V1\TeamInviteController;
-Route::put('/auth/update', [AuthController::class, 'update'])->middleware('auth:sanctum');
+
 Route::prefix('v1')->group(function () {
     
     // Health Check
@@ -25,7 +20,7 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
-    // Auth Routes
+    // Auth Routes (Public)
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register']);
         Route::post('/login', [AuthController::class, 'login']);
@@ -45,7 +40,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{company}/users', [CompanyController::class, 'users']);
     });
 
-    // User Routes
+    // User Management Routes
     Route::prefix('users')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [UserManagementController::class, 'index']);
         Route::post('/', [UserManagementController::class, 'store']);
@@ -73,7 +68,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/{task}', [TaskController::class, 'show']);
         Route::put('/{task}', [TaskController::class, 'update']);
         Route::delete('/{task}', [TaskController::class, 'destroy']);
-	 Route::post('/{id}/status', [TaskController::class, 'updateStatus']);
     });
 
     // Team Routes
@@ -92,49 +86,24 @@ Route::prefix('v1')->group(function () {
         Route::get('/{id}', [CalendarController::class, 'show']);
         Route::put('/{id}', [CalendarController::class, 'update']);
         Route::delete('/{id}', [CalendarController::class, 'destroy']);
+        Route::post('/task-deadline', [CalendarController::class, 'createTaskDeadline']);
     });
-
-    // Time Tracking Routes
-    Route::prefix('time-tracking')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [TimeTrackingController::class, 'index']);
-        Route::post('/', [TimeTrackingController::class, 'store']);
-    });
-
-    // Reports Routes
-    Route::prefix('reports')->middleware('auth:sanctum')->group(function () {
-        Route::get('/overview', [ReportsController::class, 'overview']);
-        Route::get('/project', [ReportsController::class, 'projectReport']);
-        Route::get('/team-performance', [ReportsController::class, 'teamPerformance']);
-        Route::get('/financial', [ReportsController::class, 'financialReport']);
-        Route::get('/productivity', [ReportsController::class, 'productivityReport']);
-        Route::get('/budget-vs-actual', [ReportsController::class, 'budgetVsActual']);
-    });
-
-    // Finance Routes
-    Route::prefix('finance')->middleware('auth:sanctum')->group(function () {
-        Route::get('/budget/{projectId}', [FinanceController::class, 'getBudget']);
-        Route::post('/budget', [FinanceController::class, 'createBudget']);
-        Route::put('/budget/{id}', [FinanceController::class, 'updateBudget']);
-        Route::get('/expenses/{projectId}', [FinanceController::class, 'getExpenses']);
-        Route::post('/expense', [FinanceController::class, 'createExpense']);
-        Route::post('/expense/{id}/approve', [FinanceController::class, 'approveExpense']);
-        Route::get('/invoices/{projectId}', [FinanceController::class, 'getInvoices']);
-        Route::post('/invoice', [FinanceController::class, 'createInvoice']);
-        Route::post('/invoice/{id}/pay', [FinanceController::class, 'markInvoicePaid']);
-        Route::get('/dashboard/{projectId}', [FinanceController::class, 'getDashboard']);
-    });
-
-    // Team Invite
-    Route::post('/team/invite', [TeamInviteController::class, 'invite'])->middleware('auth:sanctum');
+// Time Tracking Routes
+Route::prefix('time-tracking')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [TimeTrackingController::class, 'index']);
+    Route::post('/', [TimeTrackingController::class, 'store']);
+    Route::get('/{id}', [TimeTrackingController::class, 'show']);
+    Route::put('/{id}', [TimeTrackingController::class, 'update']);
+    Route::delete('/{id}', [TimeTrackingController::class, 'destroy']);
+    Route::post('/{id}/approve', [TimeTrackingController::class, 'approve']);
+    Route::get('/summary/daily', [TimeTrackingController::class, 'dailySummary']);
+    Route::get('/summary/weekly', [TimeTrackingController::class, 'weeklySummary']);
+    Route::get('/summary/monthly', [TimeTrackingController::class, 'monthlySummary']);
+});
 });
 
-
-// Task Routes
-Route::prefix('tasks')->middleware('auth:sanctum')->group(function () {
-    Route::get('/', [TaskController::class, 'index']);
-    Route::post('/', [TaskController::class, 'store']);
-    Route::get('/{id}', [TaskController::class, 'show']);
-    Route::put('/{id}', [TaskController::class, 'update']);
-    Route::delete('/{id}', [TaskController::class, 'destroy']);
+Route::prefix('time-tracking')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [TimeTrackingController::class, 'index']);
+    Route::post('/', [TimeTrackingController::class, 'store']);
 });
 

@@ -48,3 +48,4 @@ bootstrap/cache/*.php
 /coverage
 .phpunit.result.cache
 .phpunit.cache
+node_modules
