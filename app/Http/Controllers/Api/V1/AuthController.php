@@ -27,6 +27,11 @@ public function update(Request $request)
             'user' => $user,
             'message' => 'Profile updated successfully'
         ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'message' => 'Validation failed',
+            'errors' => $e->errors()
+        ], 422);
     } catch (\Exception $e) {
         return response()->json([
             'message' => 'Error: ' . $e->getMessage()

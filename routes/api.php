@@ -67,23 +67,25 @@ Route::prefix('v1')->group(function () {
     });
 
     // Task Routes
-    Route::prefix('tasks')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [TaskController::class, 'index']);
-        Route::post('/', [TaskController::class, 'store']);
-        Route::get('/{task}', [TaskController::class, 'show']);
-        Route::put('/{task}', [TaskController::class, 'update']);
-        Route::delete('/{task}', [TaskController::class, 'destroy']);
-	 Route::post('/{id}/status', [TaskController::class, 'updateStatus']);
-    });
+Route::prefix('tasks')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [TaskController::class, 'index']);
+    Route::post('/', [TaskController::class, 'store']);
+    Route::get('/{id}', [TaskController::class, 'show']);
+    Route::put('/{id}', [TaskController::class, 'update']);
+    Route::delete('/{id}', [TaskController::class, 'destroy']);
+    Route::post('/{id}/status', [TaskController::class, 'updateStatus']);
+});
 
     // Team Routes
-    Route::prefix('teams')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [TeamController::class, 'index']);
-        Route::post('/', [TeamController::class, 'store']);
-        Route::get('/{team}', [TeamController::class, 'show']);
-        Route::put('/{team}', [TeamController::class, 'update']);
-        Route::delete('/{team}', [TeamController::class, 'destroy']);
-    });
+Route::prefix('teams')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [TeamController::class, 'index']);
+    Route::post('/', [TeamController::class, 'store']);
+    Route::get('/{id}', [TeamController::class, 'show']);
+    Route::put('/{id}', [TeamController::class, 'update']);
+    Route::delete('/{id}', [TeamController::class, 'destroy']);
+    Route::post('/{id}/members', [TeamController::class, 'addMember']);
+    Route::delete('/{id}/members/{user}', [TeamController::class, 'removeMember']);
+});
 
     // Calendar Routes
     Route::prefix('calendar')->middleware('auth:sanctum')->group(function () {

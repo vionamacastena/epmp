@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Team;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class TeamController extends Controller
@@ -13,175 +14,163 @@ class TeamController extends Controller
     public function index()
     {
         try {
-            $user = Auth::user();
-            
-            if ($user->role === 'super_admin' || $user->role === 'admin') {
-                $teams = Team::with(['lead', 'company'])->paginate(15);
-            } else {
-                $teams = Team::where('company_id', $user->company_id)
-                    ->with(['lead', 'company'])
-                    ->paginate(15);
-            }
-
-            return response()->json([
-                'data' => $teams->items(),
-                'meta' => [
-                    'current_page' => $teams->currentPage(),
-                    'last_page' => $teams->lastPage(),
-                    'per_page' => $teams->perPage(),
-                    'total' => $teams->total(),
-                ]
-            ]);
-
+            $teams = DB::table('teams')
+                ->leftJoin('users', 'teams.lead_id', '=', 'users.id')
+                ->select('teams.*', 'users.name as lead_name')
+                ->get();
+            return response()->json(['data' => $teams]);
         } catch (\Exception $e) {
-            Log::error('TeamController@index error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server Error'], 500);
+            return response()->json(['message' => $e->getMessage()], 500);
         }
     }
 
     public function store(Request $request)
     {
         try {
-            $user = Auth::user();
-
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'description' => 'nullable|string',
                 'lead_id' => 'required|exists:users,id',
             ]);
 
-            $team = Team::create([
-                'company_id' => $user->company_id ?? 1,
+            $id = DB::table('teams')->insertGetId([
+                'company_id' => Auth::user()->company_id ?? 1,
                 'name' => $validated['name'],
-                'description' => $validated['description'] ?? null,
+                'description' => $request->description ?? null,
                 'lead_id' => $validated['lead_id'],
                 'status' => 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
-            return response()->json([
-                'message' => 'Team created successfully',
-                'data' => $team->load(['lead', 'company'])
-            ], 201);
-
+            $team = DB::table('teams')->where('id', $id)->first();
+            return response()->json(['data' => $team, 'message' => 'Team created'], 201);
         } catch (\Exception $e) {
-            Log::error('TeamController@store error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server Error'], 500);
+            Log::error('Team store error: ' . $e->getMessage());
+            return response()->json(['message' => $e->getMessage()], 500);
         }
     }
 
-    public function show(Team $team)
+    public function show($id)
     {
         try {
-            $user = Auth::user();
+            $team = DB::table('teams')
+                ->leftJoin('users', 'teams.lead_id', '=', 'users.id')
+                ->select('teams.*', 'users.name as lead_name')
+                ->where('teams.id', $id)
+                ->first();
 
-            if ($user->role !== 'super_admin' && $user->role !== 'admin' && 
-                $user->company_id !== $team->company_id) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+            if (!$team) {
+                return response()->json(['message' => 'Team not found'], 404);
             }
 
-            return response()->json([
-                'data' => $team->load(['lead', 'company', 'members'])
-            ]);
+            $members = DB::table('team_members')
+                ->join('users', 'team_members.user_id', '=', 'users.id')
+                ->where('team_members.team_id', $id)
+                ->select('users.id', 'users.name', 'users.email')
+                ->get();
 
+            $team->members = $members;
+
+            return response()->json(['data' => $team]);
         } catch (\Exception $e) {
-            Log::error('TeamController@show error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server Error'], 500);
+            Log::error('Team show error: ' . $e->getMessage());
+            return response()->json(['message' => $e->getMessage()], 500);
         }
     }
 
-    public function update(Request $request, Team $team)
+    public function update(Request $request, $id)
     {
         try {
-            $user = Auth::user();
-
-            if ($user->role !== 'super_admin' && $user->role !== 'admin') {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
             $validated = $request->validate([
-                'name' => 'sometimes|string|max:255',
-                'description' => 'nullable|string',
-                'lead_id' => 'sometimes|exists:users,id',
+                'name' => 'required|string|max:255',
+                'lead_id' => 'required|exists:users,id',
                 'status' => 'nullable|string|in:active,inactive',
             ]);
 
-            $team->update($validated);
+            $updated = DB::table('teams')
+                ->where('id', $id)
+                ->update([
+                    'name' => $validated['name'],
+                    'description' => $request->description,
+                    'lead_id' => $validated['lead_id'],
+                    'status' => $validated['status'] ?? 'active',
+                    'updated_at' => now(),
+                ]);
 
-            return response()->json([
-                'message' => 'Team updated successfully',
-                'data' => $team->load(['lead', 'company'])
-            ]);
+            if (!$updated) {
+                return response()->json(['message' => 'Team not found'], 404);
+            }
 
+            $team = DB::table('teams')->where('id', $id)->first();
+            return response()->json(['data' => $team, 'message' => 'Team updated']);
         } catch (\Exception $e) {
-            Log::error('TeamController@update error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server Error'], 500);
+            Log::error('Team update error: ' . $e->getMessage());
+            return response()->json(['message' => $e->getMessage()], 500);
         }
     }
 
-    public function destroy(Team $team)
+    public function destroy($id)
     {
         try {
-            $user = Auth::user();
-
-            if ($user->role !== 'super_admin') {
-                return response()->json(['message' => 'Unauthorized'], 403);
+            $deleted = DB::table('teams')->where('id', $id)->delete();
+            if (!$deleted) {
+                return response()->json(['message' => 'Team not found'], 404);
             }
-
-            $team->delete();
-
-            return response()->json(['message' => 'Team deleted successfully']);
-
+            return response()->json(['message' => 'Team deleted']);
         } catch (\Exception $e) {
-            Log::error('TeamController@destroy error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server Error'], 500);
+            return response()->json(['message' => $e->getMessage()], 500);
         }
     }
 
-    public function addMember(Request $request, Team $team)
+    public function addMember(Request $request, $id)
     {
         try {
-            $user = Auth::user();
-
-            if ($user->role !== 'super_admin' && $user->role !== 'admin') {
-                return response()->json(['message' => 'Unauthorized'], 403);
+            $team = DB::table('teams')->where('id', $id)->first();
+            if (!$team) {
+                return response()->json(['message' => 'Team not found'], 404);
             }
 
-            $validated = $request->validate([
-                'user_id' => 'required|exists:users,id',
+            $userId = $request->user_id;
+
+            $exists = DB::table('team_members')
+                ->where('team_id', $id)
+                ->where('user_id', $userId)
+                ->exists();
+
+            if ($exists) {
+                return response()->json(['message' => 'User is already a member'], 400);
+            }
+
+            DB::table('team_members')->insert([
+                'team_id' => $id,
+                'user_id' => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
-            $team->members()->attach($validated['user_id']);
-
-            return response()->json([
-                'message' => 'Member added successfully',
-                'data' => $team->load(['members'])
-            ]);
-
+            return response()->json(['message' => 'Member added successfully']);
         } catch (\Exception $e) {
-            Log::error('TeamController@addMember error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server Error'], 500);
+            Log::error('Team add member error: ' . $e->getMessage());
+            return response()->json(['message' => $e->getMessage()], 500);
         }
     }
 
-    public function removeMember(Team $team, $userId)
+    public function removeMember($id, $userId)
     {
         try {
-            $user = Auth::user();
-
-            if ($user->role !== 'super_admin' && $user->role !== 'admin') {
-                return response()->json(['message' => 'Unauthorized'], 403);
+            $team = DB::table('teams')->where('id', $id)->first();
+            if (!$team) {
+                return response()->json(['message' => 'Team not found'], 404);
             }
 
-            $team->members()->detach($userId);
+            DB::table('team_members')
+                ->where('team_id', $id)
+                ->where('user_id', $userId)
+                ->delete();
 
-            return response()->json([
-                'message' => 'Member removed successfully',
-                'data' => $team->load(['members'])
-            ]);
-
+            return response()->json(['message' => 'Member removed successfully']);
         } catch (\Exception $e) {
-            Log::error('TeamController@removeMember error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server Error'], 500);
+            return response()->json(['message' => $e->getMessage()], 500);
         }
     }
 }
