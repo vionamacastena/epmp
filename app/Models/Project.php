@@ -67,4 +67,23 @@ class Project extends Model
         $completed = $this->tasks()->where('status', 'done')->count();
         return round(($completed / $total) * 100);
     }
+   public function budget()
+{
+    return $this->hasOne(Budget::class);
+}
+
+public function expenses()
+{
+    return $this->hasMany(Expense::class);
+}
+
+public function invoices()
+{
+    return $this->hasMany(Invoice::class);
+}
+
+public function timeEntries()
+{
+    return $this->hasMany(TimeEntry::class);
+}	
 }

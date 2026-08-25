@@ -2,108 +2,59 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
-use App\Http\Controllers\Api\V1\CompanyController;
-use App\Http\Controllers\Api\V1\UserManagementController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\TaskController;
 use App\Http\Controllers\Api\V1\TeamController;
-use App\Http\Controllers\Api\V1\CalendarController;
+use App\Http\Controllers\Api\V1\UserManagementController;
+use App\Http\Controllers\Api\V1\SubscriptionController;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
 
 Route::prefix('v1')->group(function () {
     
-    // Health Check
-    Route::get('/health', function () {
-        return response()->json([
-            'status' => 'ok',
-            'message' => 'API is running',
-            'timestamp' => now()->toISOString(),
-        ]);
-    });
+    // Auth routes (public)
+    Route::post('/auth/register', [AuthController::class, 'register']);
+    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+    Route::get('/auth/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+    Route::put('/auth/update', [AuthController::class, 'update'])->middleware('auth:sanctum');
+    
+    // Protected routes
+    Route::middleware('auth:sanctum')->group(function () {
+        
+        // Subscription routes
+        Route::get('/subscription/current', [SubscriptionController::class, 'current']);
+        Route::get('/subscription/plans', [SubscriptionController::class, 'plans']);
+        
+        // Projects
+        Route::apiResource('/projects', ProjectController::class);
+        Route::get('/projects/{id}/tasks', [ProjectController::class, 'tasks']);
+        
+        // Tasks
+        Route::apiResource('/tasks', TaskController::class);
+        
+        // Teams
+        Route::apiResource('/teams', TeamController::class);
+        
+        // Users
+        Route::get('/users', [UserManagementController::class, 'index']);
+        Route::post('/users', [UserManagementController::class, 'store']);
+        Route::get('/users/{id}', [UserManagementController::class, 'show']);
+        Route::put('/users/{id}', [UserManagementController::class, 'update']);
+        Route::delete('/users/{id}', [UserManagementController::class, 'destroy']);
 
-    // Auth Routes (Public)
-    Route::prefix('auth')->group(function () {
-        Route::post('/register', [AuthController::class, 'register']);
-        Route::post('/login', [AuthController::class, 'login']);
-        Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
-        Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
     });
-
-    // Company Routes
-    Route::prefix('companies')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [CompanyController::class, 'index']);
-        Route::post('/', [CompanyController::class, 'store']);
-        Route::get('/{company}', [CompanyController::class, 'show']);
-        Route::put('/{company}', [CompanyController::class, 'update']);
-        Route::delete('/{company}', [CompanyController::class, 'destroy']);
-        Route::post('/{company}/activate', [CompanyController::class, 'activate']);
-        Route::post('/{company}/suspend', [CompanyController::class, 'suspend']);
-        Route::get('/{company}/users', [CompanyController::class, 'users']);
-    });
-
-    // User Management Routes
-    Route::prefix('users')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [UserManagementController::class, 'index']);
-        Route::post('/', [UserManagementController::class, 'store']);
-        Route::get('/{user}', [UserManagementController::class, 'show']);
-        Route::put('/{user}', [UserManagementController::class, 'update']);
-        Route::delete('/{user}', [UserManagementController::class, 'destroy']);
-        Route::post('/{user}/activate', [UserManagementController::class, 'activate']);
-        Route::post('/{user}/deactivate', [UserManagementController::class, 'deactivate']);
-    });
-
-    // Project Routes
-    Route::prefix('projects')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [ProjectController::class, 'index']);
-        Route::post('/', [ProjectController::class, 'store']);
-        Route::get('/{project}', [ProjectController::class, 'show']);
-        Route::put('/{project}', [ProjectController::class, 'update']);
-        Route::delete('/{project}', [ProjectController::class, 'destroy']);
-        Route::get('/{project}/tasks', [ProjectController::class, 'tasks']);
-    });
-
-    // Task Routes
-    Route::prefix('tasks')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [TaskController::class, 'index']);
-        Route::post('/', [TaskController::class, 'store']);
-        Route::get('/{task}', [TaskController::class, 'show']);
-        Route::put('/{task}', [TaskController::class, 'update']);
-        Route::delete('/{task}', [TaskController::class, 'destroy']);
-    });
-
-    // Team Routes
-    Route::prefix('teams')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [TeamController::class, 'index']);
-        Route::post('/', [TeamController::class, 'store']);
-        Route::get('/{team}', [TeamController::class, 'show']);
-        Route::put('/{team}', [TeamController::class, 'update']);
-        Route::delete('/{team}', [TeamController::class, 'destroy']);
-    });
-
-    // Calendar Routes
-    Route::prefix('calendar')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [CalendarController::class, 'index']);
-        Route::post('/', [CalendarController::class, 'store']);
-        Route::get('/{id}', [CalendarController::class, 'show']);
-        Route::put('/{id}', [CalendarController::class, 'update']);
-        Route::delete('/{id}', [CalendarController::class, 'destroy']);
-        Route::post('/task-deadline', [CalendarController::class, 'createTaskDeadline']);
-    });
-// Time Tracking Routes
-Route::prefix('time-tracking')->middleware('auth:sanctum')->group(function () {
-    Route::get('/', [TimeTrackingController::class, 'index']);
-    Route::post('/', [TimeTrackingController::class, 'store']);
-    Route::get('/{id}', [TimeTrackingController::class, 'show']);
-    Route::put('/{id}', [TimeTrackingController::class, 'update']);
-    Route::delete('/{id}', [TimeTrackingController::class, 'destroy']);
-    Route::post('/{id}/approve', [TimeTrackingController::class, 'approve']);
-    Route::get('/summary/daily', [TimeTrackingController::class, 'dailySummary']);
-    Route::get('/summary/weekly', [TimeTrackingController::class, 'weeklySummary']);
-    Route::get('/summary/monthly', [TimeTrackingController::class, 'monthlySummary']);
-});
+	//Kanban Routes
+	Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
+    Route::get('/kanban/{projectId}', [App\Http\Controllers\Api\V1\KanbanController::class, 'getBoard']);
+    Route::post('/kanban/move', [App\Http\Controllers\Api\V1\KanbanController::class, 'moveTask']);
+    Route::post('/kanban/columns', [App\Http\Controllers\Api\V1\KanbanController::class, 'createColumn']);
+    Route::put('/kanban/columns/{id}', [App\Http\Controllers\Api\V1\KanbanController::class, 'updateColumn']);
+    Route::delete('/kanban/columns/{id}', [App\Http\Controllers\Api\V1\KanbanController::class, 'deleteColumn']);
 });
 
-Route::prefix('time-tracking')->middleware('auth:sanctum')->group(function () {
-    Route::get('/', [TimeTrackingController::class, 'index']);
-    Route::post('/', [TimeTrackingController::class, 'store']);
 });
-
